@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
 function TaskManager() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [email, setEmail] = useState('');
     const [tasks, setTasks] = useState([]);
+    const navigate = useNavigate();
 
     const [updatedTitle, setUpdatedTitle] = useState('');
     const [updatedDescription, setUpdatedDescription] = useState('');
@@ -87,8 +89,22 @@ function TaskManager() {
         fetchTasks();
     };
 
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        alert("Logged out successfully!");
+        navigate('/');
+    }
+
     return (
         <div className='flex flex-col'>
+            <div className='flex justify-end p-4'>
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center bg-red-500 text-white h-8 w-20 rounded-lg"
+                >
+                    LogOut
+                </button>
+            </div>
             <h1 className="text-2xl font-bold text-center mt-10">Add Task Details</h1>
             <div className="flex flex-col mt-4 p-4 w-3/4 md:w-1/2 mx-auto">
                 <label className="mb-2 font-bold">Title:</label>
