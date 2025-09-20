@@ -30,7 +30,7 @@ function App() {
       <Routes>
         {session ? (
           <>
-            <Route path='/tasks' element={<TaskManager />} />
+            <Route path='/tasks' element={<TaskManager session={session}/>} />
             <Route path='*' element={<TaskManager />} /> {/* default if logged in */}
           </>
         ) : (

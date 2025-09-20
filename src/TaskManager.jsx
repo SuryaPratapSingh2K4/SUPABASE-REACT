@@ -2,16 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
-function TaskManager() {
+function TaskManager({ session }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [email, setEmail] = useState('');
     const [tasks, setTasks] = useState([]);
     const navigate = useNavigate();
 
     const [updatedTitle, setUpdatedTitle] = useState('');
     const [updatedDescription, setUpdatedDescription] = useState('');
-    const [updatedEmail, setUpdatedEmail] = useState('');
     const [editingId, setEditingId] = useState(null); // ✅ track which task is being edited
 
     const fetchTasks = async () => {
@@ -32,11 +30,26 @@ function TaskManager() {
         fetchTasks();
     }, []);
 
-    const handleAddStudent = async (e) => {
+    useEffect(() => {
+        const channel = supabase.channel("tasks-channel");
+        channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "tasks" },
+            (payload) => {
+                const newTask = payload.new;
+                setTasks((prev) => [...prev, newTask]);
+            }
+        ).subscribe((status) => {
+            console.log("Subscription status:", status);
+        })
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    const handleAddTask = async (e) => {
         e.preventDefault();
         const { data, error } = await supabase
             .from("tasks")
-            .insert([{ title, description, email }]);
+            .insert([{ title: title, description: description, email: session.user.email }]);
 
         if (error) {
             console.error("Insert error:", error);
@@ -48,7 +61,7 @@ function TaskManager() {
 
         setTitle("");
         setDescription("");
-        setEmail("");
+
         fetchTasks();
     };
 
@@ -67,13 +80,13 @@ function TaskManager() {
         setEditingId(task.id);
         setUpdatedTitle(task.title);
         setUpdatedDescription(task.description);
-        setUpdatedEmail(task.email);
+
     };
 
     const handleEditAndSave = async (id) => {
         const { error } = await supabase
             .from("tasks")
-            .update([{ title: updatedTitle, description: updatedDescription, email: updatedEmail }])
+            .update([{ title: updatedTitle, description: updatedDescription }])
             .eq("id", id);
 
         if (error) {
@@ -85,7 +98,6 @@ function TaskManager() {
         setEditingId(null);
         setUpdatedTitle("");
         setUpdatedDescription("");
-        setUpdatedEmail("");
         fetchTasks();
     };
 
@@ -125,20 +137,11 @@ function TaskManager() {
                     className="border rounded-lg border-gray-400 p-2 mb-4"
                 />
 
-                <label className="mb-2 font-bold">Client Email:</label>
-                <input
-                    type="email"
-                    placeholder='Enter client email'
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="border rounded-lg border-gray-400 p-2 mb-4"
-                />
-
                 <button
-                    onClick={handleAddStudent}
+                    onClick={handleAddTask}
                     className="bg-blue-500 text-white p-2 rounded-lg"
                 >
-                    Add Student
+                    Add Task
                 </button>
             </div>
 
@@ -165,14 +168,6 @@ function TaskManager() {
                                             value={updatedDescription}
                                             onChange={(e) => setUpdatedDescription(e.target.value)}
                                         />
-                                        <label className='font-bold mb-2'>Updated Email:</label>
-                                        <input
-                                            type="email"
-                                            placeholder='updated email...'
-                                            className='border rounded-lg border-gray-400 p-2 mb-4'
-                                            value={updatedEmail}
-                                            onChange={(e) => setUpdatedEmail(e.target.value)}
-                                        />
                                         <button
                                             onClick={() => handleEditAndSave(t.id)}
                                             className='border border-green-500 text-green-500 p-2 rounded-lg hover:bg-green-500 hover:text-white'
@@ -184,7 +179,6 @@ function TaskManager() {
                                     <>
                                         <h3 className='font-bold'>{t.title}</h3>
                                         <p>{t.description}</p>
-                                        <p className='text-gray-600'>{t.email}</p>
                                         <div className='flex flex-row mt-2 gap-2'>
                                             <button
                                                 onClick={() => handleDelete(t.id)}
