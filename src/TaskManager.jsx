@@ -6,6 +6,7 @@ function TaskManager({ session }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [tasks, setTasks] = useState([]);
+    const [image, setImage] = useState(null);
     const navigate = useNavigate();
 
     const [updatedTitle, setUpdatedTitle] = useState('');
@@ -45,11 +46,32 @@ function TaskManager({ session }) {
         };
     }, []);
 
+    const uploadImage = async (file) => {
+        const filePath = `${file.name}-${Date.now()}`;
+        const { error } = await supabase.storage.from('task-images').upload(filePath, file);
+        if (error) {
+            console.error("Image upload error:", error);
+            alert("Image upload failed: " + error.message);
+            return null;
+        }
+        const { data, error: urlError } = supabase.storage.from('task-images').getPublicUrl(filePath);
+        if (urlError) {
+            console.error("Get public URL error:", urlError);
+            alert("Get public URL failed: " + urlError.message);
+            return null;
+        }
+        return data.publicURL;
+    }
+
     const handleAddTask = async (e) => {
         e.preventDefault();
+        let imageURL = null;
+        if (image) {
+            imageURL = await uploadImage(image);
+        }
         const { data, error } = await supabase
             .from("tasks")
-            .insert([{ title: title, description: description, email: session.user.email }]);
+            .insert([{ title: title, description: description, email: session.user.email, image_url: imageURL || null }]);
 
         if (error) {
             console.error("Insert error:", error);
@@ -107,6 +129,11 @@ function TaskManager({ session }) {
         navigate('/');
     }
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        setImage(file);
+    }
+
     return (
         <div className='flex flex-col'>
             <div className='flex justify-end p-4'>
@@ -136,7 +163,10 @@ function TaskManager({ session }) {
                     onChange={(e) => setDescription(e.target.value)}
                     className="border rounded-lg border-gray-400 p-2 mb-4"
                 />
-
+                <label className='mb-2 font-bold'>Image</label>
+                <input type="file"
+                    className='border rounded-lg border-gray-400 p-2 mb-4'
+                    onChange={handleImageChange} />
                 <button
                     onClick={handleAddTask}
                     className="bg-blue-500 text-white p-2 rounded-lg"
